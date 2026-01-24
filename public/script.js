@@ -12,7 +12,6 @@ const canvas = document.getElementById('detection-canvas');
 const ctx = canvas.getContext('2d');
 const resultsList = document.getElementById('results-list');
 const resetBtn = document.getElementById('reset-btn');
-const voiceToggle = document.getElementById('voice-toggle');
 const themeToggle = document.getElementById('theme-toggle');
 const sunIcon = document.querySelector('.sun-icon');
 const moonIcon = document.querySelector('.moon-icon');
@@ -53,8 +52,6 @@ let model = null;
 let currentMode = 'image'; // 'image', 'video', 'webcam'
 let animationId = null;
 let isDetecting = false;
-let lastSpokenTime = 0;
-let lastSpokenObjects = '';
 
 // Load SSD Model
 async function loadModel() {
@@ -207,8 +204,6 @@ function resetWorkspace() {
     // Reset Inputs
     imageInput.value = '';
     videoInput.value = '';
-
-    window.speechSynthesis.cancel();
 }
 
 resetBtn.addEventListener('click', () => {
@@ -228,7 +223,6 @@ async function detectImage() {
 
     const predictions = await model.detect(uploadedImage);
     renderPredictions(predictions);
-    speakDetections(predictions, true); // Force speak for single image
 }
 
 async function detectVideoFrame() {
@@ -249,9 +243,6 @@ async function detectVideoFrame() {
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         renderPredictions(predictions);
-
-        // Throttled Speak
-        speakDetections(predictions, false);
 
         animationId = requestAnimationFrame(loop);
     }
@@ -337,69 +328,4 @@ function getColorForClass(className) {
     return `hsl(${hue}, 70%, 60%)`;
 }
 
-// --- Enhanced TTS ---
 
-function getBestVoice() {
-    const voices = window.speechSynthesis.getVoices();
-    // Prefer Google English, or any English
-    return voices.find(v => v.name.includes('Google US English')) ||
-        voices.find(v => v.lang.startsWith('en-US')) ||
-        voices.find(v => v.lang.startsWith('en')) ||
-        voices[0];
-}
-
-function speakDetections(predictions, force = false) {
-    if (!voiceToggle.checked) return;
-
-    const now = Date.now();
-    // For video/webcam: only speak every 5 seconds to avoid spam
-    if (!force && (now - lastSpokenTime < 5000)) return;
-
-    if (predictions.length === 0) return;
-
-    // Summarize
-    const counts = {};
-    predictions.forEach(p => counts[p.class] = (counts[p.class] || 0) + 1);
-
-    const parts = [];
-    for (const [cls, count] of Object.entries(counts)) {
-        parts.push(`${count} ${cls}${count > 1 ? 's' : ''}`);
-    }
-
-    parts.sort(); // Sort to make comparison consistent
-    const currentSpokenObjects = parts.join(', ');
-
-    // If we just saw the exact same thing, maybe don't say it again unless forced (or enough time passed)
-    if (!force && currentSpokenObjects === lastSpokenObjects && (now - lastSpokenTime < 8000)) {
-        return;
-    }
-
-    let text = "I see ";
-    if (parts.length === 1) {
-        text += parts[0] + ".";
-    } else {
-        const last = parts.pop();
-        text += parts.join(", ") + ", and " + last + ".";
-    }
-
-    lastSpokenTime = now;
-    lastSpokenObjects = currentSpokenObjects;
-
-    const utterance = new SpeechSynthesisUtterance(text);
-
-    // Set Voice
-    const voice = getBestVoice();
-    if (voice) utterance.voice = voice;
-
-    // Adjust Rate/Pitch
-    utterance.rate = 1.1;
-    utterance.pitch = 1.0;
-
-    window.speechSynthesis.speak(utterance);
-}
-
-// Initialize voices (sometimes they load asynchronously)
-window.speechSynthesis.onvoiceschanged = () => {
-    // Just to ensure they are loaded
-    getBestVoice();
-};
