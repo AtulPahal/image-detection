@@ -1,18 +1,19 @@
 # Oculus Vision
 
-Oculus Vision is a next-generation, privacy-focused object detection web application powered by [TensorFlow.js](https://www.tensorflow.org/js) and the [COCO-SSD](https://github.com/tensorflow/tfjs-models/tree/master/coco-ssd) model.
+Oculus Vision is a next-generation, privacy-focused object detection web application powered by **YOLO26** (the latest state-of-the-art vision model) and **ONNX Runtime Web**.
 
-Built with a modern, responsive design, it offers real-time object detection directly in your browser without sending any data to a server.
+Built with a modern, responsive design and the ultra-fast [Bun](https://bun.sh) runtime, it offers real-time object detection directly in your browser without sending any data to a server.
 
 ## ✨ Features
 
-- **Multiple Detection Modes**:
-  - 🖼️ **Image Analysis**: Drag & drop or upload local images for instant object detection.
+- **⚡ State-of-the-Art AI**: Uses **YOLO26n** (Nano) for incredible speed and accuracy.
+- **🛡️ Privacy First**: All inference runs locally in your browser using WebAssembly. No images are uploaded to the cloud.
+- **🚀 Multiple Detection Modes**:
+  - 🖼️ **Image Analysis**: Drag & drop or upload local images.
   - 🎥 **Video Analysis**: Upload videos to detect objects frame-by-frame.
   - 📹 **Live Webcam**: Real-time object detection using your camera.
-- **Privacy First**: All processing happens client-side using TensorFlow.js. Your images and videos never leave your device.
-- **Modern UI/UX**:
-  - Smooth animations and glassmorphism design.
+- **🎨 Modern UI/UX**:
+  - Glassmorphism design system.
   - 🌓 Dark/Light mode toggle.
   - Responsive layout for all devices.
 
@@ -20,7 +21,8 @@ Built with a modern, responsive design, it offers real-time object detection dir
 
 - **Runtime**: [Bun](https://bun.sh/)
 - **Frontend**: HTML5, Vanilla CSS3, JavaScript (ES6+)
-- **AI/ML**: TensorFlow.js, COCO-SSD Pre-trained Model
+- **AI Engine**: [ONNX Runtime Web](https://onnxruntime.ai/) (WASM Backend) 
+- **Model**: YOLO26 Nano (End-to-End)
 - **Fonts**: Google Fonts (Outfit)
 
 ## 🚀 Getting Started
@@ -37,10 +39,12 @@ Built with a modern, responsive design, it offers real-time object detection dir
    cd image-detection
    ```
 
-2. Install dependencies (if any are added in the future):
+2. Install dependencies:
    ```bash
    bun install
    ```
+
+   *Note: The project includes the `yolo26.onnx` model in the `public/` folder. You do not need to download it separately.*
 
 ### Running the App
 
@@ -57,11 +61,25 @@ Open your browser and navigate to `http://localhost:3000` to start using Oculus 
 ```
 image-detection/
 ├── public/
-│   ├── index.html      # Main entry point (UI & Structure)
-│   ├── script.js       # Core logic (TF.js integration, UI handling)
-│   └── style.css       # Styling (Themes, Animations)
+│   ├── index.html      # Main UI
+│   ├── script.js       # App Logic (ONNX Model loading & Inference)
+│   ├── style.css       # Styles
+│   └── yolo26.onnx     # The YOLO26 AI Model
 ├── server.js           # Bun HTTP server
-├── package.json        # Project metadata and scripts
-└── README.md           # Project documentation
+├── package.json        # Project metadata
+└── README.md           # Documentation
 ```
 
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the project
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is open-source and available under the [ISC License](LICENSE).

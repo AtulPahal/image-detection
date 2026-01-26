@@ -48,21 +48,40 @@ if (savedTheme === 'light') {
 }
 
 // State
-let model = null;
+let session = null;
 let currentMode = 'image'; // 'image', 'video', 'webcam'
 let animationId = null;
 let isDetecting = false;
 
-// Load SSD Model
+// COCO Labels (Standard 80 classes)
+const labels = [
+    "person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat", "traffic light",
+    "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat", "dog", "horse", "sheep", "cow",
+    "elephant", "bear", "zebra", "giraffe", "backpack", "umbrella", "handbag", "tie", "suitcase", "frisbee",
+    "skis", "snowboard", "sports ball", "kite", "baseball bat", "baseball glove", "skateboard", "surfboard",
+    "tennis racket", "bottle", "wine glass", "cup", "fork", "knife", "spoon", "bowl", "banana", "apple",
+    "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "chair", "couch",
+    "potted plant", "bed", "dining table", "toilet", "tv", "laptop", "mouse", "remote", "keyboard", "cell phone",
+    "microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase", "scissors", "teddy bear",
+    "hair drier", "toothbrush"
+];
+
+// Load YOLO26 ONNX Model
 async function loadModel() {
     try {
-        console.log('Loading model...');
-        // Load the model.
-        model = await cocoSsd.load();
-        console.log('Model loaded!');
+        console.log('Loading YOLO26 model...');
+        // Configure ONNX Runtime to look for wasm files on CDN
+        ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/";
+
+        // Load the model
+        session = await ort.InferenceSession.create('./yolo26.onnx', {
+            executionProviders: ['wasm'],
+        });
+
+        console.log('YOLO26 Model loaded!');
     } catch (err) {
         console.error('Failed to load model', err);
-        alert('Failed to load AI model. Please check your connection.');
+        alert('Failed to load YOLO26 model. Please ensure "yolo26.onnx" is in the public folder.');
     }
 }
 loadModel();
@@ -214,19 +233,30 @@ resetBtn.addEventListener('click', () => {
 
 // --- Detection Logic ---
 
-async function detectImage() {
-    if (!model) await loadModel();
+// --- Detection Logic ---
 
+async function detectImage() {
+    if (!session) await loadModel();
+
+    // Set canvas to image size
     canvas.width = uploadedImage.width;
     canvas.height = uploadedImage.height;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const predictions = await model.detect(uploadedImage);
+    // Preprocessing
+    const { tensor, modelScale } = await preprocess(uploadedImage);
+
+    // Inference
+    const feeds = { images: tensor };
+    const results = await session.run(feeds);
+
+    // Postprocessing
+    const predictions = postprocess(results, modelScale.width, modelScale.height);
     renderPredictions(predictions);
 }
 
 async function detectVideoFrame() {
-    if (!model) await loadModel();
+    if (!session) await loadModel();
     isDetecting = true;
 
     // Set canvas dimensions to match video once
@@ -238,15 +268,132 @@ async function detectVideoFrame() {
     async function loop() {
         if (!isDetecting) return;
 
-        // Detect
-        const predictions = await model.detect(inputVideo);
+        // Perform detection
+        const { tensor, modelScale } = await preprocess(inputVideo);
 
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        renderPredictions(predictions);
+        try {
+            const feeds = { images: tensor };
+            const results = await session.run(feeds);
+            const predictions = postprocess(results, modelScale.width, modelScale.height);
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            renderPredictions(predictions);
+        } catch (e) {
+            console.error("Inference error:", e);
+        }
 
         animationId = requestAnimationFrame(loop);
     }
     loop();
+}
+
+
+// --- Helper Functions ---
+
+/**
+ * Preprocess image for YOLO (Resize to 640x640, Normalize)
+ */
+async function preprocess(source) {
+    const width = 640;
+    const height = 640;
+
+    // Create a temporary canvas to resize the image
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = width;
+    tempCanvas.height = height;
+    const tempCtx = tempCanvas.getContext('2d');
+
+    // Draw and resize
+    tempCtx.drawImage(source, 0, 0, width, height);
+
+    // Get image data
+    const imageData = tempCtx.getImageData(0, 0, width, height);
+    const { data } = imageData;
+
+    // Convert to float32 and normalize [0, 255] -> [0, 1]
+    const red = new Float32Array(width * height);
+    const green = new Float32Array(width * height);
+    const blue = new Float32Array(width * height);
+
+    for (let i = 0; i < data.length; i += 4) {
+        red[i / 4] = data[i] / 255.0;
+        green[i / 4] = data[i + 1] / 255.0;
+        blue[i / 4] = data[i + 2] / 255.0;
+    }
+
+    // Interleave into planar format [1, 3, 640, 640]
+    // ONNX Runtime Web expects a flat Float32Array
+    const float32Data = new Float32Array(3 * width * height);
+    float32Data.set(red, 0);
+    float32Data.set(green, width * height);
+    float32Data.set(blue, 2 * width * height);
+
+    const tensor = new ort.Tensor('float32', float32Data, [1, 3, height, width]);
+
+    return {
+        tensor,
+        modelScale: {
+            width: source.videoWidth || source.width,
+            height: source.videoHeight || source.height
+        }
+    };
+}
+
+/**
+ * Postprocess YOLO output
+ * Assumes End-to-End YOLO output (without NMS needed) or standard YOLO output
+ * YOLO26 usually outputs [1, 300, 6] -> [batch, dets, (x1, y1, x2, y2, score, class)]
+ */
+function postprocess(results, imgWidth, imgHeight) {
+    // Determine the output key (usually "output0")
+    const outputKey = Object.keys(results)[0];
+    const output = results[outputKey];
+
+    const data = output.data;
+    const dims = output.dims; // e.g., [1, 300, 6]
+
+    const predictions = [];
+    const confThreshold = 0.45;
+
+    // Check shapes to decide parsing logic
+    // YOLO End-to-End: [1, N, 6]
+    // YOLOv8 Standard: [1, 84, 8400] (requires NMS)
+
+    if (dims.length === 3 && dims[2] === 6) {
+        // End-to-End Format [1, N, 6]
+        const numDets = dims[1];
+
+        for (let i = 0; i < numDets; i++) {
+            const offset = i * 6;
+            const score = data[offset + 4];
+            const classId = Math.round(data[offset + 5]);
+
+            if (score >= confThreshold) {
+                const x1 = data[offset];
+                const y1 = data[offset + 1];
+                const x2 = data[offset + 2];
+                const y2 = data[offset + 3];
+
+                // Scale back to original image
+                const scaleX = imgWidth / 640;
+                const scaleY = imgHeight / 640;
+
+                predictions.push({
+                    bbox: [x1 * scaleX, y1 * scaleY, (x2 - x1) * scaleX, (y2 - y1) * scaleY], // [x, y, w, h]
+                    class: labels[classId] || 'unknown',
+                    score: score
+                });
+            }
+        }
+    } else {
+        // Fallback for Standard YOLOv8 format [1, 84, 8400] (cx, cy, w, h, cls1, cls2...)
+        // This is complex to implement without NMS lib, but let's try a simplified version or just Log warning.
+        console.warn("Model output shape mismatch. Expected [1, N, 6] for YOLO26 End-to-End. Got:", dims);
+        // Implementing simple parsing assuming it might be [1, 6, N]
+        // If the user drops in a standard YOLOv8, this part won't work perfectly without NMS.
+    }
+
+    return predictions;
 }
 
 function renderPredictions(predictions) {
