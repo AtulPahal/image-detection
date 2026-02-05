@@ -1,4 +1,4 @@
-# Oculus Vision
+# Oculus Vision 
  
 Oculus Vision is a next-generation, privacy-focused object detection web application powered by **YOLO26** (the latest state-of-the-art vision model) and **ONNX Runtime Web**.
 
