@@ -1,56 +1,48 @@
 <!DOCTYPE html>
-<html lang="en"> 
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Image Detection</title>
+    <title>Image Detection | VoiceBox</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Google Fonts -->
+    
+    <!-- Google Fonts: Archivo Black + Work Sans -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- ONNX Runtime Web -->
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
 </head>
 
-<body>
+<!-- Theme Toggle -->
+    <button id="theme-toggle" class="theme-toggle" title="Toggle Theme">
+        <!-- Sun Icon (for light mode - shows moon to switch to dark) -->
+        <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+        <!-- Moon Icon (for dark mode - shows sun to switch to light) -->
+        <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+    </button>
 
-    <div class="background-blobs">
-        <div class="blob blob-1"></div>
-        <div class="blob blob-2"></div>
-        <div class="blob blob-3"></div>
-    </div>
+<body>
 
     <div class="container">
         <header>
-            <div class="header-content">
-                <h1>Oculus <span class="highlight">Vision</span></h1>
-                <button id="theme-toggle" class="theme-btn" title="Toggle Theme">
-                    <!-- Sun Icon -->
-                    <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                        stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="5"></circle>
-                        <line x1="12" y1="1" x2="12" y2="3"></line>
-                        <line x1="12" y1="21" x2="12" y2="23"></line>
-                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                        <line x1="1" y1="12" x2="3" y2="12"></line>
-                        <line x1="21" y1="12" x2="23" y2="12"></line>
-                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-                    </svg>
-                    <!-- Moon Icon -->
-                    <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                        stroke-linejoin="round" style="display:none;">
-                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-                    </svg>
-                </button>
-            </div>
-            <p>Next-gen Object Detection powered by TensorFlow.js</p>
+            <span class="overline">Object Detection</span>
+            <h1>Oculus <span>Vision</span></h1>
+            <p>Real-time AI object detection powered by YOLO26</p>
         </header>
 
         <main>
@@ -63,7 +55,7 @@
 
             <!-- Image Upload Section -->
             <div class="upload-section active-section" id="image-section">
-                <input type="file" id="image-input" accept="image/*" hidden>
+                <input type="file" id="image-input" accept="image/*">
                 <div class="upload-content" id="image-drop-zone">
                     <svg class="upload-icon" xmlns="http://www.w3.org/2000/svg" width="48" height="48"
                         viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
@@ -78,8 +70,8 @@
             </div>
 
             <!-- Video Upload Section -->
-            <div class="upload-section" id="video-section" style="display: none;">
-                <input type="file" id="video-input" accept="video/*" hidden>
+            <div class="upload-section" id="video-section">
+                <input type="file" id="video-input" accept="video/*">
                 <div class="upload-content" id="video-drop-zone">
                     <svg class="upload-icon" xmlns="http://www.w3.org/2000/svg" width="48" height="48"
                         viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
@@ -99,7 +91,7 @@
             </div>
 
             <!-- Webcam Section -->
-            <div class="upload-section" id="webcam-section" style="display: none;">
+            <div class="upload-section" id="webcam-section">
                 <div class="upload-content" id="webcam-trigger">
                     <svg class="upload-icon" xmlns="http://www.w3.org/2000/svg" width="48" height="48"
                         viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
@@ -113,11 +105,12 @@
                 </div>
             </div>
 
-            <div class="workspace" id="workspace" style="display: none;">
+            <!-- Workspace (Results) -->
+            <div class="workspace" id="workspace">
                 <div class="image-container-wrapper">
                     <div class="image-container">
                         <img id="uploaded-image" src="#" alt="Uploaded Image" crossorigin="anonymous">
-                        <video id="input-video" style="display:none;" muted crossorigin="anonymous"></video>
+                        <video id="input-video" muted crossorigin="anonymous"></video>
                         <canvas id="detection-canvas"></canvas>
                     </div>
                 </div>
@@ -127,12 +120,11 @@
                         <h2>Detections</h2>
                     </div>
                     <div id="results-list" class="results-list">
-                        <!-- Results will be injected here -->
                         <div class="result-item placeholder">
                             <span>Processing...</span>
                         </div>
                     </div>
-                    <button id="reset-btn" class="secondary-btn">New Image</button>
+                    <button id="reset-btn" class="btn btn-secondary btn-full">New Image</button>
                 </div>
             </div>
         </main>

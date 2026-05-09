@@ -13,8 +13,6 @@ const ctx = canvas.getContext('2d');
 const resultsList = document.getElementById('results-list');
 const resetBtn = document.getElementById('reset-btn');
 const themeToggle = document.getElementById('theme-toggle');
-const sunIcon = document.querySelector('.sun-icon');
-const moonIcon = document.querySelector('.moon-icon');
 
 const tabs = document.querySelectorAll('.tab-btn');
 const sections = {
@@ -23,29 +21,31 @@ const sections = {
     webcam: document.getElementById('webcam-section')
 };
 
-// Theme Logic
-themeToggle.addEventListener('click', () => {
-    const isLight = document.body.getAttribute('data-theme') === 'light';
-    if (isLight) {
-        document.body.removeAttribute('data-theme');
-        sunIcon.style.display = 'block';
-        moonIcon.style.display = 'none';
+// ============================================
+// THEME TOGGLE
+// ============================================
+
+function setTheme(theme) {
+    if (theme === 'dark') {
+        document.body.setAttribute('data-theme', 'dark');
         localStorage.setItem('theme', 'dark');
     } else {
-        document.body.setAttribute('data-theme', 'light');
-        sunIcon.style.display = 'none';
-        moonIcon.style.display = 'block';
+        document.body.removeAttribute('data-theme');
         localStorage.setItem('theme', 'light');
     }
-});
+}
 
 // Load saved theme
-const savedTheme = localStorage.getItem('theme');
-if (savedTheme === 'light') {
-    document.body.setAttribute('data-theme', 'light');
-    sunIcon.style.display = 'none';
-    moonIcon.style.display = 'block';
-}
+const savedTheme = localStorage.getItem('theme') || 'light';
+setTheme(savedTheme);
+
+// Toggle click handler
+themeToggle.addEventListener('click', () => {
+    const currentTheme = document.body.getAttribute('data-theme');
+    setTheme(currentTheme === 'dark' ? 'light' : 'dark');
+});
+
+// State
 
 // State
 let session = null;
@@ -417,20 +417,25 @@ function drawBoundingBox(prediction) {
     // Generate color
     const color = getColorForClass(text);
 
-    // Box
+    // Box - VoiceBox style: 4px thick border
     ctx.strokeStyle = color;
     ctx.lineWidth = 4;
     ctx.strokeRect(x, y, width, height);
 
     // Text Label
     const textString = `${text} ${Math.round(prediction.score * 100)}%`;
-    ctx.font = '18px Outfit';
+    ctx.font = '700 18px "Work Sans", sans-serif';
     const textWidth = ctx.measureText(textString).width;
 
-    ctx.fillStyle = color;
+    // Theme-aware: use darker box on dark theme, lighter on light
+    const isDark = document.body.getAttribute('data-theme') === 'dark';
+    const boxColor = isDark ? '#262626' : color;
+    const textColor = isDark ? '#FAFAFA' : '#FAFAFA';
+
+    ctx.fillStyle = boxColor;
     ctx.fillRect(x, y > 20 ? y - 25 : y, textWidth + 10, 25);
 
-    ctx.fillStyle = '#fff';
+    ctx.fillStyle = textColor;
     ctx.fillText(textString, x + 5, y > 20 ? y - 7 : y + 18);
 }
 
@@ -446,17 +451,13 @@ function addResultToList(prediction) {
     score.classList.add('confidence-score');
     score.textContent = Math.round(prediction.score * 100) + '%';
 
-    // Dot
+    // Dot - VoiceBox style: square edges
     const dot = document.createElement('div');
-    dot.style.width = '10px';
-    dot.style.height = '10px';
-    dot.style.borderRadius = '50%';
+    dot.classList.add('dot');
     dot.style.backgroundColor = getColorForClass(prediction.class);
-    dot.style.marginRight = '10px';
 
     const leftContainer = document.createElement('div');
-    leftContainer.style.display = 'flex';
-    leftContainer.style.alignItems = 'center';
+    leftContainer.classList.add('left');
     leftContainer.appendChild(dot);
     leftContainer.appendChild(name);
 
